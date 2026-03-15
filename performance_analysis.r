@@ -9,8 +9,6 @@ clean_data$attendance_group <- cut(clean_data$AttendanceRate, breaks = c(0, 75, 
                                    labels = c("Low", "Mid", "High"))
 avg_grades <- aggregate(FinalGrade ~ attendance_group, data = clean_data, mean)
 
-par(mfrow = c(2, 2))
-
 #identifies students below the 70% threshold
 plot(clean_data$PreviousGrade, clean_data$FinalGrade,
      col = ifelse(clean_data$risk_status == "At-Risk", "red", "darkgrey"),
@@ -35,3 +33,18 @@ pie(risk_counts,
     labels = paste(names(risk_counts), "\n", round(100*risk_counts/sum(risk_counts), 1), "%"),
     main = "Student Risk Distribution",
     col = c("tomato", "lightgrey"))
+
+#MACHINE LEARNING
+train_indices <- sample(1:nrow(clean_data), 0.7 * nrow(clean_data))
+train_data <- clean_data[train_indices, ]
+test_data  <- clean_data[-train_indices, ]
+
+ml_model <- lm(FinalGrade ~ StudyHoursPerWeek + AttendanceRate, data = train_data)
+
+#prediction
+predictions <- predict(ml_model, test_data)
+actuals_preds <- data.frame(actuals = test_data$FinalGrade, predicteds = predictions)
+
+print(head(actuals_preds))
+mape <- mean(abs((actuals_preds$predicteds - actuals_preds$actuals)) / actuals_preds$actuals) * 100
+print(paste("The error - MAPE is: ", round(mape, digit = 2), "%"))
