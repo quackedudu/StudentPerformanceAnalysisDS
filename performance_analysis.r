@@ -43,8 +43,23 @@ ml_model <- lm(FinalGrade ~ StudyHoursPerWeek + AttendanceRate, data = train_dat
 
 #prediction
 predictions <- predict(ml_model, test_data)
-actuals_preds <- data.frame(actuals = test_data$FinalGrade, predicteds = predictions)
+actuals_preds <- data.frame(
+  Name = test_data$Name, 
+  StudentID = test_data$StudentID,
+  actual = test_data$FinalGrade, 
+  predicted = predictions
+)
+
+#calculate error for priority
+actuals_preds$error_difference <- abs(actuals_preds$actual - actuals_preds$predicted)
+
+#priorities based on prediction error
+#low: < 5, medium: 5-10, high: > 10
+actuals_preds$priority <- cut(actuals_preds$error_difference, 
+                              breaks = c(-Inf, 5, 10, Inf), 
+                              labels = c("Low", "Medium", "High"))
+View(actuals_preds)
 
 print(head(actuals_preds))
-mape <- mean(abs((actuals_preds$predicteds - actuals_preds$actuals)) / actuals_preds$actuals) * 100
+mape <- mean(abs((actuals_preds$predicted - actuals_preds$actual)) / actuals_preds$actual) * 100
 print(paste("The error - MAPE is: ", round(mape, digit = 2), "%"))
