@@ -4,29 +4,64 @@ clean_data <- read.csv("student_performance_cleaned.csv", check.names = FALSE)
 clean_data$risk_status <- ifelse(clean_data$FinalGrade < 70, "At-Risk", "Stable")
 risk_counts <- table(clean_data$risk_status)
 
-#grouping attendance
+#identifies students below 70%
+plot(clean_data$PreviousGrade, clean_data$FinalGrade,
+     col = ifelse(clean_data$risk_status == "At-Risk", "red", "darkgrey"),
+     pch = 16, 
+     main = "Intervention Target Map: Quadrant Analysis",
+     xlab = "Previous Grade", ylab = "Final Grade",
+     xlim = c(60, 95), ylim = c(60, 95))
+
+abline(h = 70, col = "red", lty = 2, lwd = 2)
+abline(v = 70, col = "blue", lty = 2, lwd = 2)
+
+text(85, 85, "Consistent", col = "darkgrey", font = 2)
+text(85, 65, "Sudden Drop", col = "red", font = 2)
+text(65, 85, "Improved", col = "darkgreen", font = 2)
+text(65, 65, "Risky", col = "red", font = 2)
+
+#grade by attendance
 clean_data$attendance_group <- cut(clean_data$AttendanceRate, breaks = c(0, 75, 85, 100), 
                                    labels = c("Low", "Mid", "High"))
 avg_grades <- aggregate(FinalGrade ~ attendance_group, data = clean_data, mean)
-
-#identifies students below the 70% threshold
-plot(clean_data$PreviousGrade, clean_data$FinalGrade,
-     col = ifelse(clean_data$risk_status == "At-Risk", "red", "darkgrey"),
-     pch = 16, main = "Intervention Target Map",
-     xlab = "Previous Grade", ylab = "Final Grade")
-abline(h = 70, col = "red", lty = 2)
-
-#grade by attendance
 barplot(avg_grades$FinalGrade, names.arg = avg_grades$attendance_group,
         main = "Average Grade by Attendance",
         xlab = "Attendance Level", ylab = "Mean Final Grade",
         col = "darkseagreen", ylim = c(0, 100))
 
+#parental support correlation with PREVIOUS marks
+clean_data$ParentalSupport <- factor(clean_data$ParentalSupport, 
+                                     levels = c("Low", "Medium", "High"))
+
+support_prev_avg <- aggregate(PreviousGrade ~ ParentalSupport, data = clean_data, mean)
+
+plot(support_prev_avg$PreviousGrade, type = "b", 
+     main = "Historical Support Context",
+     xlab = "Parental Support Level", ylab = "Mean Previous Grade",
+     col = "coral", pch = 18, lwd = 3, xaxt = "n", 
+     ylim = c(min(support_prev_avg$PreviousGrade) - 5, max(support_prev_avg$PreviousGrade) + 5)) 
+
+grid(nx = NULL, ny = NULL, col = "lightgray", lty = "dotted")
+
+axis(1, at = 1:3, labels = levels(support_prev_avg$ParentalSupport))
+
+text(1:3, support_prev_avg$PreviousGrade, labels = round(support_prev_avg$PreviousGrade, 1), 
+     pos = 3, cex = 0.8, col = "darkred")
+
 #parental support correlation with final grade
-boxplot(FinalGrade ~ ParentalSupport, data = clean_data,
-        main = "Support as a Risk Offset",
-        xlab = "Parental Support Level", ylab = "Final Grade",
-        col = "skyblue")
+clean_data$ParentalSupport <- factor(clean_data$ParentalSupport, 
+                                     levels = c("Low", "Medium", "High"))
+support_avg <- aggregate(FinalGrade ~ ParentalSupport, data = clean_data, mean)
+plot(support_avg$FinalGrade, type = "b", 
+     main = "Support as a Risk Offset",
+     xlab = "Parental Support Level", ylab = "Mean Final Grade",
+     col = "skyblue", pch = 18, lwd = 3, xaxt = "n", 
+     ylim = c(min(support_avg$FinalGrade) - 5, max(support_avg$FinalGrade) + 5)) 
+grid(nx = NULL, ny = NULL, col = "lightgray", lty = "dotted")
+
+axis(1, at = 1:3, labels = levels(support_avg$ParentalSupport))
+
+text(1:3, support_avg$FinalGrade, labels = round(support_avg$FinalGrade, 1), pos = 3, cex = 0.8, col = "darkblue")
 
 #percentage of students needing intervention
 pie(risk_counts, 
@@ -58,7 +93,6 @@ actuals_preds$error_difference <- abs(actuals_preds$actual - actuals_preds$predi
 actuals_preds$priority <- cut(actuals_preds$error_difference, 
                               breaks = c(-Inf, 5, 10, Inf), 
                               labels = c("Low", "Medium", "High"))
-View(actuals_preds)
 
 print(head(actuals_preds))
 mape <- mean(abs((actuals_preds$predicted - actuals_preds$actual)) / actuals_preds$actual) * 100
